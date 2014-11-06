@@ -1,0 +1,11 @@
+body {
+    padding: 10px !important;   
+}
+ 
+table {
+  border: 1px solid black;
+}
+
+td {
+  border: 1px solid black;
+}

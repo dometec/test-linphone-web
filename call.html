@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  
+    <script type="text/javascript" src="linphone.js"></script>
+    <script type="text/javascript" src="utils.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.2.26/angular.min.js"></script>
+    
+    <link rel="stylesheet" href="style.css" />
+        
+  </head>
+  
+  <body>
+  	
+    <object id="linphonecore" type="application/x-linphone-web" width="0" height="0"></object>
+  	
+    <h4>Pluing version: <span id="plugin-version"></span> </h4>
+    
+    <hr/>
+    
+  	<form name="formRegistration">
+  		<p> 1. Registration</p>
+  		<div>Username : <input id="r_username" type="text"     value="" /></div>
+  		<div>Password : <input id="r_password" type="password" value="1234"/></div>
+  		<div>Server :   <input id="r_address"  type="text"     value="172.20.11.190" /></div>
+  		<input type="button" OnClick="onRegistration()"        value="Register">
+  		<div> Status : <span id="r_status">No registration</span></div>
+  	</form>
+  	
+  	<form name="formCall">
+  		<p> 2. Call</p>
+  		<div>Contact address : <input id="c_address" type="text" value="sip:2000@172.20.11.190"/>
+        <input type="button" OnClick="call()" value="Call">
+        <input type="button" OnClick="callEarlyMedia()" value="Call EarlyMedia">
+      </div>
+      
+  		
+      <div id="CallStatusDiv" ng-app="myApp" ng-controller="CallStatusController">  
+        Status: 
+        <table>
+          <tr>
+            <td></td>
+            <td>CallId</td>
+            <td>Status</td>
+            <td>Action</td>
+          </tr>
+          <tr ng-repeat="s in callsstatus">
+            <td><input type="checkbox" ng-model="s.selected"></input></td>
+            <td>{{ s.callid }}</td>
+            <td>{{ s.status }}</td>
+            <td>
+              <input type="button" ng-click="Answer()" value="Answer"></input> 
+              <input type="button" ng-click="Pause()" value="Pause"></input> 
+              <input type="button" ng-click="Terminate()" value="Terminate"></input> 
+            </td>
+          </tr>
+        </table>
+        <br/>
+        <input type="button" ng-click="Transfer()" value="Transfer"></input>
+        <br/>
+        <input type="button" ng-click="TransferToNewCall()" value="TransferToNewCall"></input>
+        <input id="t_address" type="text" value="sip:9123@172.20.11.190"/> (non funziona)
+      </div>
+  	</form>
+    
+    <br/>
+    <br/>
+    
+    <object id="video1" type="application/x-linphone-web-video" style="display: inline; width: 320px; height: 240px;">
+      <param name="onload" value="onLoadVideo" />
+      <param name="magic" value="1" />
+    </object>
+    &nbsp;
+    <object id="video2" type="application/x-linphone-web-video" style="display: inline; width: 320px; height: 240px;">
+      <param name="onload" value="onLoadVideo" />
+      <param name="magic" value="1" />
+    </object>
+    	
+    <form name="formMessage">
+      <p> 3. Chat</p>
+      <div>
+        Contact address : <input id="m_address" type="text" value="sip:2000@172.20.11.190" />
+        <input type="button" value="Open chat room" OnClick="onOpenChat()"> (non implementato)
+      </div>
+      <div>Message :         <input id="m_message" type="text" value="ciao-hello" onchange="onCompose()" /></div>
+      <input type="button" OnClick="onSendChat()"              value="Send">
+      Messaggi:
+      <div style="border: 1px solid black"><span id="m_chat"></span></div> (non implementato)
+    </form>
+
+    <form name="formPresence">
+      <p> 4. Presence</p>
+      <div>
+        Add friends : <input id="p_address" type="text" value="sip:2000@172.20.11.190" />
+        <input type="button" value="Add" OnClick="onAddFriend()">
+      </div>
+      <input type="button" OnClick="setPresenceOnPhone()"  value="I'm on phone">
+      <input type="button" OnClick="setPresenceOnline()"  value="I'm online">
+      <input type="button" OnClick="setPresenceOffline()"  value="I'm offline">
+      <input type="button" OnClick="setPresenceAway()"  value="I'm away">
+      Stato amici:
+      <div style="border: 1px solid black"><span id="p_status"></span></div>
+    </form>
+    
+  	<script type="text/javascript">
+  	    
+  	  var chatroom;
+  	
+   		function getCore() {
+   		    return document.getElementById("linphonecore");
+   		}
+  		
+  		//----------REGISTRATION-------------------------
+   		function registration(username, password, server) {
+   			var core = getCore();
+   			var proxy = core.newProxyConfig();
+   			var authinfo = core.newAuthInfo(username, null, password, null, null);
+   			core.addAuthInfo(authinfo);
+   			proxy.identity = 'sip:' + username + '@' + server; /*set identity with user name and domain*/
+   			proxy.serverAddr = 'sip:' + server; /* we assume domain = proxy server address*/
+   			proxy.registerEnabled = true; /*activate registration for this proxy config*/
+   			core.addProxyConfig(proxy); /*add proxy config to linphone core*/
+   			core.defaultProxy = proxy; /*set to default proxy*/
+   		}
+      
+   		function onRegistrationStateChanged(event, proxy, state, message) {
+        updateStatus("r_status",message);
+        console.log(message);
+      }
+            
+      function onRegistration() {
+        registration(g("r_username"), g("r_password"), g("r_address"));
+      }
+
+      //-------------------------------------------
+          
+  		//----------CALL-------------------------
+   		
+   		function call() {
+   			var core = getCore();
+   			var address = core.newAddress(g("c_address"));
+   			if(address !== null) {
+   				core.inviteAddress(address);
+   				console.log("Call: " + address.asString());
+   			}
+   		}
+ 	 	
+   		function callEarlyMedia() {
+   			var core = getCore();
+   			var params = core.createDefaultCallParameters();
+   	    if (params !== null)
+   	      params.earlyMediaSendingEnabled = true ;
+   			var address = core.newAddress(g("c_address"));
+   			if (address !== null) {
+   				core.inviteAddressWithParams(address, params);
+   				console.log("Call: " + address.asString());
+   			}
+   		}
+ 	 	
+  		function onCallStateChanged(event, call, state, message) {
+  			var statusScope = angular.element(document.getElementById('CallStatusDiv')).scope();
+  			var line = null;
+  			for (var i = 0; i < statusScope.callsstatus.length; i++) {
+  				var entry = statusScope.callsstatus[i];
+  				if (entry.callid == call.callLog.callId) {
+  					line = entry; 
+  				}
+  			}
+  			
+  			if (line == null) {
+  				line = {callid : call.callLog.callId, status: message, ocall: call, selected: false};
+  				statusScope.callsstatus.push(line);
+  			} else 
+  				line.status = message;
+  			
+  			statusScope.$apply();
+  			
+   			if (state == linphone.CallState.IncomingReceived) {
+ 				  var core = getCore();
+ 				  core.acceptEarlyMedia(call);
+  				call.currentParams.earlyMediaSendingEnabled = true
+  			}
+  			
+  		}
+  		
+      var myApp = angular.module("myApp",[]);
+      
+      function CallStatusController($scope) {
+        
+        $scope.callsstatus = [];
+              
+        $scope.rowClass = function(person) {
+          return person.name;
+        };
+          
+        $scope.Answer = function(e) {
+          var core = getCore();
+          core.acceptCall(this.s.ocall);
+        }
+      
+        $scope.Terminate = function() {
+          var core = getCore();
+          core.terminateCall(this.s.ocall);
+        }
+        
+        $scope.Pause = function() {
+          var core = getCore();
+          core.pauseCall(this.s.ocall);
+        }
+        
+        $scope.Transfer = function() {
+        	var calls = [];
+            
+          for (var i = 0; i < $scope.callsstatus.length; i++) {
+            var entry = $scope.callsstatus[i];
+            if (entry.selected) {
+              calls.push(entry.ocall); 
+            }
+          }
+              
+          if (calls.length == 2) {        	  
+            var core = getCore();
+            core.transferCallToAnother(calls[0], calls[1]);
+          }
+          
+        }
+        
+        $scope.TransferToNewCall = function() {                      
+          for (var i = 0; i < $scope.callsstatus.length; i++) {
+            var entry = $scope.callsstatus[i];
+            if (entry.selected) {
+              var core = getCore();
+              core.transferCallToAnother(entry.ocall, g("t_address"));
+            }
+          }
+        }
+        
+      }
+        
+  		
+  		//-------------------------------------------
+  		
+  		//----------MESSAGE-------------------------
+
+  		function onOpenChat() {
+  			var core = getCore();
+  			chatroom = core.getOrCreateChatRoom(g("m_address"));
+  		}
+  		
+  		function onSendChat() {
+  			chatroom.newMessage(g("m_message"));
+  			document.getElementById("r_username").value += g("m_message"); 
+  		}
+  		
+  		function onCompose() {
+  			if (chatroom != undefined)
+  			  chatroom.compose();
+  		}
+  		
+  		function onMessageReceived(event, room, message) {
+  			chatroom = room;
+  			document.getElementById("r_username").value += message; 
+  		}
+  		
+  		//-------------------------------------------
+  		
+  		//----------PRESENCE-------------------------
+  		
+  		function onAddFriend() {
+  			var core = getCore();
+  			var f = core.newFriendWithAddress(g("p_address"));
+  			core.addFriend(f);
+  		}
+  		
+  		function onNotifyPresenceReceived(event, friend) {
+  			document.getElementById("p_status").innerHTML += friend.address.username + "@" + friend.address.domain + ": " + friend.presenceModel.activity + "<br/>"; 
+  		}
+ 
+  		function setPresenceOnPhone() {
+  		  var presenceModel = core.presenceModel;
+  		  presenceModel.setActivity(linphone.PresenceActivityType.OnThePhone, null);
+  		  core.presenceModel = presenceModel;
+  		}
+
+  		function setPresenceOnline() {
+  		  var core = getCore();
+  		  core.presenceModel.activity.type = 1;
+  		}
+  		
+  		function setPresenceOffline() {
+  		  var core = getCore();
+  		  core.presenceModel.activity.type = 0;
+  		}
+
+  		function setPresenceAway() {
+  		  var core = getCore();
+  		  var model = core.newPresenceModel();
+  		  var service = core.newPresenceService(null, 1, null);
+  		  model.addService(service);
+  		  var person = core.newPresencePerson(null);
+  		  var activity = core.newPresenceActivity(3, null);
+  		  person.addActivity(activity);
+  		  model.addPerson(person);
+  		  core.presenceModel = model;
+  		}
+  		
+  		//-------------------------------------------
+  		
+  		var core = getCore();
+  		core.init();
+  				
+  		/* Add callback for registration and call state */
+  		addEvent(core, "callStateChanged", onCallStateChanged);
+  		addEvent(core, "registrationStateChanged", onRegistrationStateChanged);
+  		addEvent(core, "messageReceived", onMessageReceived);
+  		addEvent(core, "notifyPresenceReceived", onNotifyPresenceReceived);
+  		  
+  		/* Display logs information in the console */
+  		core.logHandler = function(level, message) {
+  			window.console.log(message);
+  		}
+  		
+      document.getElementById("r_username").value = 9000 + Math.floor(Math.random() * 100);
+      
+      /* Start main loop for receiving notifications and doing background linphonecore work */
+       core.iterateEnabled = true;
+       core.nativeVideoWindowId = document.getElementById("video1").window;
+       updateStatus("plugin-version", core.pluginVersion);
+    
+
+  		
+    </script>
+    
+  </body>
+  
+</html>
