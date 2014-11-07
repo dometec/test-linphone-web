@@ -25,6 +25,7 @@
   		<div>Password : <input id="r_password" type="password" value="1234"/></div>
   		<div>Server :   <input id="r_address"  type="text"     value="172.20.11.190" /></div>
   		<input type="button" OnClick="onRegistration()"        value="Register">
+  		<input type="button" OnClick="onUnregistration()"      value="Unregister">
   		<div> Status : <span id="r_status">No registration</span></div>
   	</form>
   	
@@ -35,7 +36,6 @@
         <input type="button" OnClick="callEarlyMedia()" value="Call EarlyMedia">
       </div>
       
-  		
       <div id="CallStatusDiv" ng-app="myApp" ng-controller="CallStatusController">  
         Status: 
         <table>
@@ -52,6 +52,7 @@
             <td>
               <input type="button" ng-click="Answer()" value="Answer"></input> 
               <input type="button" ng-click="Pause()" value="Pause"></input> 
+              <input type="button" ng-click="Resume()" value="Resume"></input> 
               <input type="button" ng-click="Terminate()" value="Terminate"></input> 
             </td>
           </tr>
@@ -106,22 +107,31 @@
   	<script type="text/javascript">
   	    
   	  var chatroom;
+  	  var proxy;
   	
    		function getCore() {
    		    return document.getElementById("linphonecore");
    		}
   		
   		//----------REGISTRATION-------------------------
-   		function registration(username, password, server) {
+   		function onRegistration() {
+   			var username = g("r_username");
+   			var password = g("r_password");
+   			var server   = g("r_address");
+   			
    			var core = getCore();
-   			var proxy = core.newProxyConfig();
+   			
    			var authinfo = core.newAuthInfo(username, null, password, null, null);
    			core.addAuthInfo(authinfo);
+
+   			proxy = core.newProxyConfig();
    			proxy.identity = 'sip:' + username + '@' + server; /*set identity with user name and domain*/
    			proxy.serverAddr = 'sip:' + server; /* we assume domain = proxy server address*/
    			proxy.registerEnabled = true; /*activate registration for this proxy config*/
+   			proxy.publishEnabled = true;
    			core.addProxyConfig(proxy); /*add proxy config to linphone core*/
    			core.defaultProxy = proxy; /*set to default proxy*/
+   			
    		}
       
    		function onRegistrationStateChanged(event, proxy, state, message) {
@@ -129,8 +139,9 @@
         console.log(message);
       }
             
-      function onRegistration() {
-        registration(g("r_username"), g("r_password"), g("r_address"));
+      function onUnregistration() {
+    	  var core = getCore();
+    	  core.clearProxyConfig();
       }
 
       //-------------------------------------------
@@ -178,7 +189,7 @@
   			
    			if (state == linphone.CallState.IncomingReceived) {
  				  var core = getCore();
- 				  core.acceptEarlyMedia(call);
+ 				  //core.acceptEarlyMedia(call); //TODO non implementata
   				call.currentParams.earlyMediaSendingEnabled = true
   			}
   			
@@ -207,6 +218,11 @@
         $scope.Pause = function() {
           var core = getCore();
           core.pauseCall(this.s.ocall);
+        }
+        
+        $scope.Resume = function() {
+          var core = getCore();
+          core.resumeCall(this.s.ocall);
         }
         
         $scope.Transfer = function() {
@@ -278,31 +294,31 @@
   		}
  
   		function setPresenceOnPhone() {
-  		  var presenceModel = core.presenceModel;
-  		  presenceModel.setActivity(linphone.PresenceActivityType.OnThePhone, null);
-  		  core.presenceModel = presenceModel;
+        var core = getCore();
+        var presenceModel = core.presenceModel;
+        presenceModel.setActivity(linphone.PresenceActivityType.OnThePhone, null); 
+        core.presenceModel = presenceModel; 
   		}
 
   		function setPresenceOnline() {
-  		  var core = getCore();
-  		  core.presenceModel.activity.type = 1;
+        var core = getCore();
+        var presenceModel = core.presenceModel;
+        presenceModel.setActivity(linphone.PresenceActivityType.Online, null); 
+        core.presenceModel = presenceModel; 
   		}
   		
   		function setPresenceOffline() {
-  		  var core = getCore();
-  		  core.presenceModel.activity.type = 0;
+        var core = getCore();
+        var presenceModel = core.presenceModel;
+        presenceModel.setActivity(linphone.PresenceActivityType.Offline, null); 
+        core.presenceModel = presenceModel; 
   		}
 
   		function setPresenceAway() {
-  		  var core = getCore();
-  		  var model = core.newPresenceModel();
-  		  var service = core.newPresenceService(null, 1, null);
-  		  model.addService(service);
-  		  var person = core.newPresencePerson(null);
-  		  var activity = core.newPresenceActivity(3, null);
-  		  person.addActivity(activity);
-  		  model.addPerson(person);
-  		  core.presenceModel = model;
+        var core = getCore();
+        var presenceModel = core.presenceModel;
+        presenceModel.setActivity(linphone.PresenceActivityType.Away, null); 
+        core.presenceModel = presenceModel; 
   		}
   		
   		//-------------------------------------------
@@ -318,7 +334,7 @@
   		  
   		/* Display logs information in the console */
   		core.logHandler = function(level, message) {
-  			window.console.log(message);
+  			//window.console.log(message);
   		}
   		
       document.getElementById("r_username").value = 9000 + Math.floor(Math.random() * 100);
