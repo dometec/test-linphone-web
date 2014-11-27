@@ -23,7 +23,7 @@
   		<p> 1. Registration</p>
   		<div>Username : <input id="r_username" type="text"     value="" /></div>
   		<div>Password : <input id="r_password" type="password" value="1234"/></div>
-  		<div>Server :   <input id="r_address"  type="text"     value="172.20.11.190" /></div>
+  		<div>Server :   <input id="r_address"  type="text"     value="192.168.0.62" /></div>
   		<input type="button" OnClick="onRegistration()"        value="Register">
   		<input type="button" OnClick="onUnregistration()"      value="Unregister">
   		<div> Status : <span id="r_status">No registration</span></div>
@@ -31,7 +31,7 @@
   	
   	<form name="formCall">
   		<p> 2. Call</p>
-  		<div>Contact address : <input id="c_address" type="text" value="sip:2000@172.20.11.190"/>
+  		<div>Contact address : <input id="c_address" type="text" value="sip:2000@192.168.0.62"/>
         <input type="button" OnClick="call()" value="Call">
         <input type="button" OnClick="callEarlyMedia()" value="Call EarlyMedia">
       </div>
@@ -61,7 +61,7 @@
         <input type="button" ng-click="Transfer()" value="Transfer"></input>
         <br/>
         <input type="button" ng-click="TransferToNewCall()" value="TransferToNewCall"></input>
-        <input id="t_address" type="text" value="sip:9123@172.20.11.190"/> (non funziona)
+        <input id="t_address" type="text" value="sip:9123@192.168.0.62"/>
       </div>
   	</form>
     
@@ -81,7 +81,7 @@
     <form name="formMessage">
       <p> 3. Chat</p>
       <div>
-        Contact address : <input id="m_address" type="text" value="sip:2000@172.20.11.190" />
+        Contact address : <input id="m_address" type="text" value="sip:2000@192.168.0.62" />
         <input type="button" value="Open chat room" OnClick="onOpenChat()"> (non implementato)
       </div>
       <div>Message :         <input id="m_message" type="text" value="ciao-hello" onchange="onCompose()" /></div>
@@ -93,7 +93,7 @@
     <form name="formPresence">
       <p> 4. Presence</p>
       <div>
-        Add friends : <input id="p_address" type="text" value="sip:2000@172.20.11.190" />
+        Add friends : <input id="p_address" type="text" value="sip:2000@192.168.0.62" />
         <input type="button" value="Add" OnClick="onAddFriend()">
       </div>
       <input type="button" OnClick="setPresenceOnPhone()"  value="I'm on phone">
@@ -238,7 +238,10 @@
           if (calls.length == 2) {        	  
             var core = getCore();
             core.transferCallToAnother(calls[0], calls[1]);
+            return
           }
+          
+          alert("Select two call to transfer each other!");
           
         }
         
@@ -247,9 +250,12 @@
             var entry = $scope.callsstatus[i];
             if (entry.selected) {
               var core = getCore();
-              core.transferCallToAnother(entry.ocall, g("t_address"));
+              core.transferCall(entry.ocall, g("t_address"));
+              return;
             }
           }
+          
+          alert("Select a call to transfer!");
         }
         
       }
@@ -334,7 +340,7 @@
   		  
   		/* Display logs information in the console */
   		core.logHandler = function(level, message) {
-  			//window.console.log(message);
+  			window.console.log(message);
   		}
   		
       document.getElementById("r_username").value = 9000 + Math.floor(Math.random() * 100);
